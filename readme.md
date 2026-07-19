@@ -6,10 +6,7 @@ An interactive local web application built with **Python** and **Dash** for visu
 
 ## Dashboard Preview
 
-> **Screenshot Placeholder**
-
 ![IMU Signal Explorer Dashboard](dashboard.JPG)
-
 
 ---
 
