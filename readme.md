@@ -8,7 +8,7 @@ An interactive local web application built with **Python** and **Dash** for visu
 
 > **Screenshot Placeholder**
 
-![IMU Signal Explorer Dashboard](dashboard.jpg)
+![IMU Signal Explorer Dashboard](dashboard.JPG)
 
 
 ---
@@ -19,7 +19,7 @@ An interactive local web application built with **Python** and **Dash** for visu
 - Filter by one or more participants
 - Filter by walking conditions
 - Select individual sensor signals
-- ⏱Explore specific time windows using a duration slider
+- Explore specific time windows using a duration slider
 - Built-in zoom, pan, hover, and reset tools powered by Plotly
 
 ---
