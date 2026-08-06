@@ -1,25 +1,27 @@
+import os
 import dash
 from dash import dcc, html, Input, Output
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from config import CSV_PATH ,SAMPLING_RATE, EXCLUDE_COLS, SUBJECTS_COL, CLASS_COL
 
-csv_path = 'dataset.csv'
+csv_path = os.path.join('datasets', CSV_PATH)
 print(f"Loading data from {csv_path}...")
 df = pd.read_csv(csv_path)
 
-SAMPLING_RATE = 60 # Hz
+sampling_rate = SAMPLING_RATE # Hz
 
-exclude_cols = ['participant_id', 'walk_mode']
+exclude_cols = EXCLUDE_COLS
 signal_cols = [c for c in df.columns if c not in exclude_cols and np.issubdtype(df[c].dtype, np.number)]
 
-participants = sorted(df['participant_id'].unique().tolist())
-walk_modes = sorted(df['walk_mode'].unique().tolist())
+subjects = sorted(df[SUBJECTS_COL].unique().tolist())
+classes = sorted(df[CLASS_COL].unique().tolist())
 
-# Calculate the maximum duration in seconds across all participant/mode combinations
-# This sets the upper limit for our duration slider
-max_rows = df.groupby(['participant_id', 'walk_mode']).size().max()
-max_seconds = float(np.ceil(max_rows / SAMPLING_RATE))
+# Calculate the maximum duration in seconds across all subjects/class combinations
+# This sets the upper limit for the duration slider
+max_rows = df.groupby([SUBJECTS_COL, CLASS_COL]).size().max()
+max_seconds = float(np.ceil(max_rows / sampling_rate))
 
 # Initialize Dash App
 app = dash.Dash(__name__)
@@ -38,24 +40,24 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'padding': '20px
             )
         ]),
         
-        # Participant Selection (Multiple)
+        # Subject Selection (Multiple)
         html.Div(style={'flex': '1'}, children=[
-            html.Label("Select Participants:"),
+            html.Label("Select Subjects:"),
             dcc.Dropdown(
-                id='participant-dropdown',
-                options=[{'label': str(p), 'value': p} for p in participants],
-                value=[participants[0]], 
+                id='subject-dropdown',
+                options=[{'label': str(p), 'value': p} for p in subjects],
+                value=[subjects[0]], 
                 multi=True
             )
         ]),
         
-        # Walk Mode Selection (Multiple)
+        # Class Selection (Multiple)
         html.Div(style={'flex': '1'}, children=[
-            html.Label("Select Walk Modes:"),
+            html.Label("Select Classes:"),
             dcc.Dropdown(
-                id='mode-dropdown',
-                options=[{'label': m, 'value': m} for m in walk_modes],
-                value=walk_modes, 
+                id='class-dropdown',
+                options=[{'label': m, 'value': m} for m in classes],
+                value=classes, 
                 multi=True
             )
         ]),
@@ -83,25 +85,25 @@ app.layout = html.Div(style={'fontFamily': 'Arial, sans-serif', 'padding': '20px
 @app.callback(
     Output('imu-graph', 'figure'),
     [Input('signal-dropdown', 'value'),
-     Input('participant-dropdown', 'value'),
-     Input('mode-dropdown', 'value'),
+     Input('subject-dropdown', 'value'),
+     Input('class-dropdown', 'value'),
      Input('duration-slider', 'value')]
 )
-def update_graph(selected_signal, selected_parts, selected_modes, duration_range):
+def update_graph(selected_signal, selected_subjects, selected_classes, duration_range):
     fig = go.Figure()
 
     # Handle empty states
-    if not selected_parts or not selected_modes or not selected_signal:
-        return fig.update_layout(title="Please select at least one participant, mode, and signal.")
+    if not selected_subjects or not selected_classes or not selected_signal:
+        return fig.update_layout(title="Please select at least one subject, class, and signal.")
 
     start_sec, end_sec = duration_range
-    start_idx = int(start_sec * SAMPLING_RATE)
-    end_idx = int(end_sec * SAMPLING_RATE)
+    start_idx = int(start_sec * sampling_rate)
+    end_idx = int(end_sec * sampling_rate)
 
-    for participant in selected_parts:
-        for mode in selected_modes:
+    for subject in selected_subjects:
+        for mode in selected_classes:
             # Filter the dataframe
-            subset = df[(df['participant_id'] == participant) & (df['walk_mode'] == mode)]
+            subset = df[(df[SUBJECTS_COL] == subject) & (df[CLASS_COL] == mode)]
             
             if subset.empty:
                 continue
@@ -110,13 +112,13 @@ def update_graph(selected_signal, selected_parts, selected_modes, duration_range
             y_data = subset[selected_signal].iloc[start_idx:end_idx].values
             
             # Reconstruct time axis for this specific slice
-            x_data = np.arange(len(y_data)) / SAMPLING_RATE + start_sec
+            x_data = np.arange(len(y_data)) / sampling_rate + start_sec
             
             fig.add_trace(go.Scatter(
                 x=x_data,
                 y=y_data,
                 mode='lines',
-                name=f'P{participant} | {mode}',
+                name=f'S{subject} | {mode}',
                 opacity=0.85
             ))
 
@@ -127,7 +129,7 @@ def update_graph(selected_signal, selected_parts, selected_modes, duration_range
         template="plotly_white",
         hovermode="x unified",
         legend=dict(
-            title="Participant | Mode",
+            title="Subject | Mode",
             orientation="v",
             yanchor="top",
             y=1,
